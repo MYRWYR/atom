@@ -71,8 +71,33 @@ class arActorExportJob extends arExportJob
                 return;
             }
 
-            $this->exportResource($resource, $path);
+            $this->csvActorExport($path, $resource);
             $this->logExportProgress();
+        }
+    }
+
+    protected function csvActorExport($path, $resource)
+    {
+        $configuration = ProjectConfiguration::getApplicationConfiguration('qubit', 'cli', false);
+        $this->context = sfContext::createInstance($configuration);
+
+        // Prepare CSV exporter
+        $writer = new csvActorExport($path);
+        $writer->setOptions(['relations' => true]);
+
+        // Export actors and, optionally, related data
+        $itemsExported = 0;
+
+        $cultures = array_keys(DefaultTranslationLinksComponent::getOtherCulturesAvailable($resource->actorI18ns, 'authorizedFormOfName', $resource->getAuthorizedFormOfName(['sourceCulture' => true])));
+
+        // Write row to file and initialize row
+        foreach ($cultures as $culture) {
+            $actor = QubitActor::getById($resource->id);
+            $this->context->getUser()->setCulture($culture);
+
+            $writer->exportResource($actor);
+
+            ++$itemsExported;
         }
     }
 }
